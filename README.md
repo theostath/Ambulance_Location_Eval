@@ -119,5 +119,5 @@ If we change rt1 to 8 minutes, the coverage drops to 62.4%.
 
 ![Case 2 results rt1_8](https://user-images.githubusercontent.com/24894934/171465284-fb272aed-ebfd-4517-a991-5331f6474b39.png)
 
-
+Conclusion: the percentage of double coverage in rt = 10 min is improved marginally from 88.8% to 91.2%, but for rt = 8 min is significantly improved from 42.4% to 62.4%. We have to remember that rt = 8 min is the critical response time for a case of heart attack, while rt = 10 min is the one set by USEMSA for a coverage of 95% in urban areas.
 
