@@ -83,6 +83,8 @@ I run the programm one time with 3 stations and one time with 4 stations (there 
 
 # First case (3 stations)
 
+file: case1.py
+
 10 ambulances, rt1 = 10 minutes, rt2 = 18 minutes, emergency calls = 125
 
 ![Case 1 results](https://user-images.githubusercontent.com/24894934/171460688-f41a464b-d7ce-4b3f-8c96-09f1bcec116d.png)
@@ -98,6 +100,24 @@ If we change rt1 to 8 minutes, the coverage drops to 42.4%.
 ![Case 1 results rt1_8](https://user-images.githubusercontent.com/24894934/171461877-28fb638c-45a0-41cd-b533-f2855c96fd62.png)
 
 # Second case (4 stations)
+
+file: case2.py
+
+14 new ambulances are bought and a new station is added in Pampeloponnisiako.
+
+24 ambulances, rt1 = 10 minutes, rt2 = 16 minutes, emergency calls = 125
+
+![Case 2 results rt1_10](https://user-images.githubusercontent.com/24894934/171465066-2e61558e-070e-4e81-b38f-65e3daf0ef12.png)
+
+minimum number of ambulances required to reach max value of the objective function: 6
+
+max value of objective function: 114
+
+The current system has an upper bound of 91.2% coverage of the emergency calls in response time rt1 = 10 minutes.
+
+If we change rt1 to 8 minutes, the coverage drops to 62.4%.
+
+![Case 2 results rt1_8](https://user-images.githubusercontent.com/24894934/171465284-fb272aed-ebfd-4517-a991-5331f6474b39.png)
 
 
 
