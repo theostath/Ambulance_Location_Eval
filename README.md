@@ -1,123 +1,221 @@
-# Ambulance_Location_Eval
-Evaluating the existing ambulance location in the Municipality of Patras
+# Ambulance Location Evaluation — Patras
 
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](#setup)
+![Solver](https://img.shields.io/badge/solver-GLPK%20via%20pymprog-orange)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+![Status](https://img.shields.io/badge/status-research--prototype-yellow)
 
-## Requirements
+Evaluating the existing ambulance station layout in the Municipality of Patras (Greece) using the **Double Standard Model (DSM)** of Gendreau, Laporte and Semet (1997). The model is solved as a mixed-integer program with [`pymprog`](https://pypi.org/project/pymprog/) (GLPK backend).
 
-Create environment with conda.
+<p align="center">
+  <img src="docs/usage.gif" alt="CLI demo: reproducing the four headline coverage numbers" width="780">
+</p>
+
+---
+
+## Table of contents
+- [Background](#background)
+- [The model](#the-model)
+- [Case study](#case-study)
+- [Setup](#setup)
+- [Usage](#usage)
+- [Tests](#tests)
+- [Results](#results)
+- [Project layout](#project-layout)
+- [References](#references)
+
+---
+
+## Background
+
+USEMSA (United States Emergency Medical Services Act) sets two coverage standards:
+
+| Area  | Standard                                       |
+| ----- | ---------------------------------------------- |
+| Urban | 95% of incidents handled within **10 minutes** |
+| Rural | 95% of incidents handled within **35 minutes** |
+
+For **heart-attack** cases the critical response time is **8 minutes**; every additional minute reduces the survival rate by 7–10%.
+
+---
+
+## The model
+
+Gendreau's DSM uses two response-time thresholds `rt1 < rt2`:
+
+- All demand must be reachable within `rt2`.
+- A fraction `λ` of demand must be reachable within `rt1`.
+- The objective **maximises weighted double-coverage within `rt1`**.
+
+### Parameters
+
+| Symbol     | Meaning                                              |
+| ---------- | ---------------------------------------------------- |
+| `d[i]`     | Emergency-call weight at point `i`                   |
+| `t[j][i]`  | Travel time from station `j` to point `i`            |
+| `a[j][i]`  | 1 if `t[j][i] ≤ rt1`, else 0                         |
+| `b[j][i]`  | 1 if `t[j][i] ≤ rt2`, else 0                         |
+| `P`        | Total fleet budget                                   |
+| `Pj`       | Per-station ambulance cap                            |
+| `λ`        | Required single-coverage fraction within `rt1`       |
+
+### Decision variables
+
+| Symbol  | Kind    | Meaning                                                  |
+| ------- | ------- | -------------------------------------------------------- |
+| `x1[i]` | Binary  | Point `i` is covered at least **once** within `rt1`      |
+| `x2[i]` | Binary  | Point `i` is covered at least **twice** within `rt1`     |
+| `y[j]`  | Integer | Number of ambulances at station `j`                      |
+
+### Objective
 
 ```
-conda create --name Ambulance python=3.7
+maximise  Σ  d[i] · x2[i]
+          i
 ```
 
-Activate environment and change directory:
+The constraints (R1–R5) are documented inline in [`dsm.py`](dsm.py).
 
+---
+
+## Case study
+
+| Property              | Value         |
+| --------------------- | ------------- |
+| Area                  | 125.4 km²     |
+| Residents (2011)      | 170,896       |
+| Density               | 1,363 / km²   |
+
+![Municipality of Patras](https://user-images.githubusercontent.com/24894934/171456625-e9ca7652-a194-4729-9b72-36f987fc2781.png)
+
+12 points of interest (black) and 4 stations / hospitals:
+
+![Points of interest and stations](https://user-images.githubusercontent.com/24894934/171456997-90195392-ed91-4cc8-b402-a5085e1a0f63.png)
+
+Total weighted demand sums to **125**, which is the theoretical maximum of the objective.
+
+| Case | Stations                                                    | Ambulances | `rt2`  |
+| ---- | ----------------------------------------------------------- | ---------- | ------ |
+| 1    | Agios Andreas, University Hospital, Port                    | 10         | 18 min |
+| 2    | Case 1 + Pampeloponnisiako                                  | 24         | 16 min |
+
+`rt2` is derived automatically as the worst best-case travel time: `max_i ( min_j t[j][i] )`.
+
+---
+
+## Setup
+
+Requires **Python 3.10+** (tested on 3.12). Runs on **Windows, macOS, and Linux** — `pymprog` and its `swiglpk` backend ship prebuilt wheels for all three.
+
+```bash
+pip install -r requirements.txt
 ```
-conda activate Ambulance
-cd anaconda3/envs/Ambulance
+
+For tests: `pip install -r requirements-dev.txt`.
+
+---
+
+## Usage
+
+A unified CLI (`run.py`) reproduces any of the four headline results without editing source:
+
+```bash
+python run.py --case 1 --rt1 10    # 88.8% double coverage
+python run.py --case 1 --rt1 8     # 42.4%
+python run.py --case 2 --rt1 10    # 91.2%
+python run.py --case 2 --rt1 8     # 62.4%
 ```
 
-Use pip install to install the required packages: numpy, pymprog
+| Flag         | Description                                                     | Default                  |
+| ------------ | --------------------------------------------------------------- | ------------------------ |
+| `--case`     | `1` (3 stations) or `2` (4 stations). **Required.**             | —                        |
+| `--rt1`      | Primary response-time threshold (minutes).                      | 8                        |
+| `--lamda`    | Required single-coverage fraction within `rt1`.                 | 0.42 (case 1) / 0.6 (case 2) |
+| `--verbose`  | Print pymprog solver progress.                                  | off                      |
 
-pymprog is needed to define the model that sets the restrictions for the integer programming.
+The legacy entry points still work standalone:
 
-## The problem
+```bash
+python case1.py
+python case2.py
+```
 
-USEMSA (United States Emergency Medical Services Act) sets these standards:
+---
 
-- In urban areas 95% of the incidents should be dealt with in **10 minutes**.
-- In rural areas 95% of the incidents should be dealt with in **35 minutes**.
+## Tests
 
-In case of **heart attack** the critical **response time** is **8 minutes** and every minute after that reduces the survival rates by 7-10%.
+```bash
+pytest tests/
+```
 
-## The mathematical model
+Smoke tests pin all four headline numbers and the derived `rt2` for both cases.
 
-DSM (Double Standard Model) was first introduced by Gendreu in 1997 and uses two coverage standards: rt1 and rt2, where rt1 < rt2.
-
-All the demand should be covered from the ambulances in time rt2 and lambda (%) in time rt1.
-
-In order to solve this problem, we have to utilize graphs by defining a set of nodes that include:
-- points of interest
-- ambulance stations
-- number of hospitals
-
-There are also some more parameters for the problem that need to be defined.
-- di: the density of emergency calls in region of interest i
-- rt1 --> emergencies in 10 or 8 minutes and rt2 --> the response time that is needed for all the incidents to be dealt with.
-- p: the upper limit of the vehicles (ambulances)
-- pj: the upper limit of the vehicles in station j
-- tji: the time that an ambulance needs to go from station i to region of interest j
-- aij: binary variabe equal to 1 when tji <= rt1
-- bij: binary variable equal to 1 when tji <= rt2
-- lambda: the coverage percentage in time rt1
-
-Finally, there are the variables of interest:
-- xik: binary variable equal to 1 when region of interest i is covered k times from an ambulance in time rt1
-- yj: the number of ambulances in station j (integer value)
-
-So, we define the objective function:
-Maximize(sum(di*xi^2)) where i =1, ..., n.
-
-The objective function aims in maximizing the number of emergency calls that are covered 2 times in time rt1 in the region of interest i, while all the emergency calls are covered at least 1 time in time rt2.
-
-We also set 7 restrictions that give the solution, along with some sign restrictions.
-
-## Case study: Municipality of Patras
-
-number of ambulances: 10
-size: 125,4 km^2 
-residents (2011): 170.896
-density: 1.363 residents per km^2
-
-![image](https://user-images.githubusercontent.com/24894934/171456625-e9ca7652-a194-4729-9b72-36f987fc2781.png)
-
-Here are presented 12 regions of interest (black spots) and 4 stations/hospitals.
-
-![image](https://user-images.githubusercontent.com/24894934/171456997-90195392-ed91-4cc8-b402-a5085e1a0f63.png)
-
-I calculate the parameters needed for each region of interest and each station, while also setting a number of emergency calls in each region. The total number of calls and thus the maximum value of the objective function is 125.
-
-I run the programm one time with 3 stations and one time with 4 stations (there was a recent station opening). Response time rt2 is set as the max of tji. In the first case rt2=18 minutes and in the second case rt2=16 minutes.
+---
 
 ## Results
 
-# First case (3 stations)
+### Case 1 — 3 stations, 10 ambulances, `rt2 = 18 min`
 
-file: case1.py
+| `rt1`  | Objective  | Double coverage |
+| ------ | ---------- | --------------- |
+| 10 min | 111 / 125  | **88.8%**       |
+| 8 min  | 53 / 125   | **42.4%**       |
 
-10 ambulances, rt1 = 10 minutes, rt2 = 18 minutes, emergency calls = 125
+Minimum ambulances needed to reach the optimal objective: **5**.
 
-![Case 1 results](https://user-images.githubusercontent.com/24894934/171460688-f41a464b-d7ce-4b3f-8c96-09f1bcec116d.png)
+![Case 1 results rt1=10](https://user-images.githubusercontent.com/24894934/171460688-f41a464b-d7ce-4b3f-8c96-09f1bcec116d.png)
+![Case 1 results rt1=8](https://user-images.githubusercontent.com/24894934/171461877-28fb638c-45a0-41cd-b533-f2855c96fd62.png)
 
-minimum number of ambulances required to reach max value of the objective function: 5
+### Case 2 — 4 stations, 24 ambulances, `rt2 = 16 min`
 
-max value of objective function: 111
+| `rt1`  | Objective  | Double coverage |
+| ------ | ---------- | --------------- |
+| 10 min | 114 / 125  | **91.2%**       |
+| 8 min  | 78 / 125   | **62.4%**       |
 
-The current system has an upper bound of 88.8% coverage of the emergency calls in response time rt1 = 10 minutes.
+Minimum ambulances needed to reach the optimal objective: **6**.
 
-If we change rt1 to 8 minutes, the coverage drops to 42.4%.
+![Case 2 results rt1=10](https://user-images.githubusercontent.com/24894934/171465066-2e61558e-070e-4e81-b38f-65e3daf0ef12.png)
+![Case 2 results rt1=8](https://user-images.githubusercontent.com/24894934/171465284-fb272aed-ebfd-4517-a991-5331f6474b39.png)
 
-![Case 1 results rt1_8](https://user-images.githubusercontent.com/24894934/171461877-28fb638c-45a0-41cd-b533-f2855c96fd62.png)
+### Takeaway
 
-# Second case (4 stations)
+Adding the 4th station (Pampeloponnisiako) and increasing the fleet:
 
-file: case2.py
+- **At the USEMSA `rt1 = 10 min` standard** — coverage improves marginally: 88.8% → 91.2%.
+- **At the heart-attack-critical `rt1 = 8 min` threshold** — coverage improves substantially: 42.4% → 62.4%.
 
-14 new ambulances are bought and a new station is added in Pampeloponnisiako.
+The marginal gain at the USEMSA standard is small because the 3-station layout was already close to saturation there; the gap was in faster (`rt1 = 8 min`) coverage, where the new station has the largest effect.
 
-24 ambulances, rt1 = 10 minutes, rt2 = 16 minutes, emergency calls = 125
+---
 
-![Case 2 results rt1_10](https://user-images.githubusercontent.com/24894934/171465066-2e61558e-070e-4e81-b38f-65e3daf0ef12.png)
+## Project layout
 
-minimum number of ambulances required to reach max value of the objective function: 6
+```
+.
+├── dsm.py              # DSM solver (solve_dsm, derive_rt2, format_report)
+├── case1.py            # Case 1 data + thin entry point
+├── case2.py            # Case 2 data + thin entry point
+├── run.py              # Unified CLI
+├── tests/
+│   └── test_dsm.py     # Smoke tests pinning README numbers
+├── docs/
+│   ├── usage.gif          # CLI demo (shown above)
+│   └── generate_demo.py   # Regenerator: `python docs/generate_demo.py`
+├── requirements.txt
+├── requirements-dev.txt
+└── README.md
+```
 
-max value of objective function: 114
+---
 
-The current system has an upper bound of 91.2% coverage of the emergency calls in response time rt1 = 10 minutes.
+## References
 
-If we change rt1 to 8 minutes, the coverage drops to 62.4%.
+- Gendreau, M., Laporte, G., & Semet, F. (1997). *Solving an ambulance location model by tabu search.* Location Science, 5(2), 75–88.
 
-![Case 2 results rt1_8](https://user-images.githubusercontent.com/24894934/171465284-fb272aed-ebfd-4517-a991-5331f6474b39.png)
+---
 
-Conclusion: the percentage of double coverage in rt = 10 min is improved marginally from 88.8% to 91.2%, but for rt = 8 min is significantly improved from 42.4% to 62.4%. We have to remember that rt = 8 min is the critical response time for a case of heart attack, while rt = 10 min is the one set by USEMSA for a coverage of 95% in urban areas.
+## License
 
+See [LICENSE](LICENSE).
