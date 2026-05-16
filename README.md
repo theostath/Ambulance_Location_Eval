@@ -8,6 +8,10 @@
 
 Evaluating the existing ambulance station layout in the Municipality of Patras (Greece) using the **Double Standard Model (DSM)** of Gendreau, Laporte and Semet (1997). The model is solved as a mixed-integer program with [`pymprog`](https://pypi.org/project/pymprog/) (GLPK backend).
 
+<p align="center">
+  <img src="docs/usage.gif" alt="CLI demo: reproducing the four headline coverage numbers" width="780">
+</p>
+
 ---
 
 ## Table of contents
@@ -196,6 +200,9 @@ The marginal gain at the USEMSA standard is small because the 3-station layout w
 ├── run.py              # Unified CLI
 ├── tests/
 │   └── test_dsm.py     # Smoke tests pinning README numbers
+├── docs/
+│   ├── usage.gif          # CLI demo (shown above)
+│   └── generate_demo.py   # Regenerator: `python docs/generate_demo.py`
 ├── requirements.txt
 ├── requirements-dev.txt
 └── README.md
